@@ -81,11 +81,26 @@ export default function GoatsForSale() {
     if (goat.description) {
       try {
         const parsed = JSON.parse(goat.description)
+        
+        // Handle new format: all images in additionalImages array
         if (parsed.additionalImages && Array.isArray(parsed.additionalImages)) {
           images.push(...parsed.additionalImages.filter((url: string) => url && url.trim() !== ''))
         }
+        
+        // Handle alternative format: images array
+        if (parsed.images && Array.isArray(parsed.images)) {
+          images.push(...parsed.images.filter((url: string) => url && url.trim() !== ''))
+        }
+        
+        // Handle single image in parsed object
+        if (parsed.imageUrl && typeof parsed.imageUrl === 'string') {
+          images.push(parsed.imageUrl)
+        }
       } catch (e) {
-        // Description is not JSON, ignore
+        // Description is not JSON, check if it's a direct image URL
+        if (goat.description.startsWith('http') && (goat.description.includes('imgur') || goat.description.includes('cloudinary') || goat.description.includes('data:image'))) {
+          images.push(goat.description)
+        }
       }
     }
     
@@ -93,7 +108,7 @@ export default function GoatsForSale() {
     const uniqueImages = [...new Set(images)].filter((url: string) => url && url.trim() !== '')
     
     // Debug logging
-    console.log(`Goat ${goat.name} images:`, uniqueImages, 'raw description:', goat.description)
+    console.log(`Goat ${goat.name} images:`, uniqueImages, 'imageUrl:', goat.imageUrl, 'description:', goat.description?.substring(0, 100) + '...')
     
     return uniqueImages
   }
@@ -171,7 +186,7 @@ export default function GoatsForSale() {
                     const images = getGoatImages(goat)
                     const firstImage = images[0]
                     
-                    return firstImage && (firstImage.startsWith('http') || firstImage.startsWith('/')) ? (
+                    return firstImage && (firstImage.startsWith('http') || firstImage.startsWith('/') || firstImage.startsWith('data:image/')) ? (
                       <>
                         <Image
                           src={firstImage}

@@ -191,12 +191,35 @@ export default function Home() {
                   <div className="h-48 relative overflow-hidden">
                     {(() => {
                       const images = []
+                      
+                      // Add imageUrls array if it exists
                       if (goat.imageUrls && Array.isArray(goat.imageUrls)) {
                         images.push(...goat.imageUrls.filter((url: string) => url && url.trim() !== ''))
                       }
+                      
+                      // Add main imageUrl if it exists
                       if (goat.imageUrl && !images.includes(goat.imageUrl)) {
                         images.unshift(goat.imageUrl)
                       }
+                      
+                      // Parse images from description (for new uploads)
+                      if (goat.description) {
+                        try {
+                          const parsed = JSON.parse(goat.description)
+                          if (parsed.additionalImages && Array.isArray(parsed.additionalImages)) {
+                            images.push(...parsed.additionalImages.filter((url: string) => url && url.trim() !== ''))
+                          }
+                          if (parsed.images && Array.isArray(parsed.images)) {
+                            images.push(...parsed.images.filter((url: string) => url && url.trim() !== ''))
+                          }
+                        } catch (e) {
+                          // Check if description is a direct image URL
+                          if (goat.description.startsWith('http') && (goat.description.includes('imgur') || goat.description.includes('cloudinary') || goat.description.includes('data:image'))) {
+                            images.push(goat.description)
+                          }
+                        }
+                      }
+                      
                       const firstImage = images[0]
                       
                       return firstImage && (firstImage.startsWith('http') || firstImage.startsWith('/')) ? (
