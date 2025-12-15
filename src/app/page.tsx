@@ -192,7 +192,7 @@ export default function Home() {
                     {(() => {
                       const images = []
                       if (goat.imageUrls && Array.isArray(goat.imageUrls)) {
-                        images.push(...goat.imageUrls.filter(url => url && url.trim() !== ''))
+                        images.push(...goat.imageUrls.filter((url: string) => url && url.trim() !== ''))
                       }
                       if (goat.imageUrl && !images.includes(goat.imageUrl)) {
                         images.unshift(goat.imageUrl)

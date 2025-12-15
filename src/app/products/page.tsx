@@ -69,7 +69,7 @@ export default function GoatsForSale() {
     
     // Add imageUrls array if it exists (for future use)
     if (goat.imageUrls && Array.isArray(goat.imageUrls)) {
-      images.push(...goat.imageUrls.filter(url => url && url.trim() !== ''))
+      images.push(...goat.imageUrls.filter((url: string) => url && url.trim() !== ''))
     }
     
     // Add main imageUrl if it exists
@@ -82,7 +82,7 @@ export default function GoatsForSale() {
       try {
         const parsed = JSON.parse(goat.description)
         if (parsed.additionalImages && Array.isArray(parsed.additionalImages)) {
-          images.push(...parsed.additionalImages.filter(url => url && url.trim() !== ''))
+          images.push(...parsed.additionalImages.filter((url: string) => url && url.trim() !== ''))
         }
       } catch (e) {
         // Description is not JSON, ignore
@@ -90,7 +90,7 @@ export default function GoatsForSale() {
     }
     
     // Remove duplicates and filter valid URLs
-    const uniqueImages = [...new Set(images)].filter(url => url && url.trim() !== '')
+    const uniqueImages = [...new Set(images)].filter((url: string) => url && url.trim() !== '')
     
     // Debug logging
     console.log(`Goat ${goat.name} images:`, uniqueImages, 'raw description:', goat.description)
