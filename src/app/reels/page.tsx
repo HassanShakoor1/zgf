@@ -36,30 +36,59 @@ function VideoPlayer({ video, isActive, onLike, isLiked }: VideoPlayerProps) {
     if (!videoElement) return
 
     if (isActive) {
-      // Reset video to start and play
+      console.log('Activating video:', video.videoUrl)
+      // Load the video source
+      videoElement.src = video.videoUrl
+      videoElement.load()
+      
+      // Reset and play
       videoElement.currentTime = 0
-      videoElement.play().then(() => {
-        setIsPlaying(true)
-      }).catch((error) => {
-        console.error('Video play failed:', error)
-        setIsPlaying(false)
-      })
+      
+      // Try to play with user interaction fallback
+      const playPromise = videoElement.play()
+      if (playPromise !== undefined) {
+        playPromise.then(() => {
+          console.log('Video playing successfully')
+          setIsPlaying(true)
+        }).catch((error) => {
+          console.error('Video play failed:', error)
+          setIsPlaying(false)
+          // Show play button for user interaction
+        })
+      }
     } else {
       videoElement.pause()
       setIsPlaying(false)
     }
-  }, [isActive])
+  }, [isActive, video.videoUrl])
 
   const togglePlay = () => {
     const videoElement = videoRef.current
     if (!videoElement) return
 
+    console.log('Toggle play clicked, current state:', isPlaying)
+
     if (isPlaying) {
       videoElement.pause()
+      setIsPlaying(false)
     } else {
-      videoElement.play().catch(console.error)
+      // Ensure video source is loaded
+      if (!videoElement.src || videoElement.src !== video.videoUrl) {
+        videoElement.src = video.videoUrl
+        videoElement.load()
+      }
+      
+      const playPromise = videoElement.play()
+      if (playPromise !== undefined) {
+        playPromise.then(() => {
+          console.log('Video started playing')
+          setIsPlaying(true)
+        }).catch((error) => {
+          console.error('Play failed:', error)
+          setIsPlaying(false)
+        })
+      }
     }
-    setIsPlaying(!isPlaying)
   }
 
   const toggleMute = () => {
@@ -82,92 +111,99 @@ function VideoPlayer({ video, isActive, onLike, isLiked }: VideoPlayerProps) {
     <div className="relative w-full h-screen bg-black flex items-center justify-center">
       {/* Mobile-sized video container */}
       <div className="relative w-[375px] h-[667px] max-w-[90vw] max-h-[80vh] bg-black rounded-lg overflow-hidden shadow-2xl border border-gray-600">
+        {/* Video Element */}
         <video
           ref={videoRef}
-          src={video.videoUrl}
-          className="w-full h-full object-cover"
+          className="w-full h-full object-cover bg-black"
           muted={isMuted}
           loop
           playsInline
-          autoPlay={false}
+          webkit-playsinline="true"
           controls={false}
-          preload="metadata"
+          preload="auto"
+          poster={video.thumbnailUrl || undefined}
           onEnded={handleVideoEnd}
-          onMouseEnter={() => setShowControls(true)}
-          onMouseLeave={() => setShowControls(false)}
           onClick={togglePlay}
           onLoadedData={() => {
-            // Ensure video is ready to play
+            console.log('Video loaded:', video.videoUrl)
             const videoElement = videoRef.current
             if (videoElement && isActive) {
               videoElement.play().catch(console.error)
             }
           }}
-        />
+          onError={(e) => {
+            console.error('Video error:', e)
+          }}
+        >
+          <source src={video.videoUrl} type="video/mp4" />
+          <source src={video.videoUrl} type="video/webm" />
+          <source src={video.videoUrl} type="video/ogg" />
+          Your browser does not support the video tag.
+        </video>
 
-        {/* Video Controls Overlay */}
+        {/* Play Button Overlay */}
         <div 
-          className={`absolute inset-0 flex items-center justify-center transition-opacity duration-300 ${
-            showControls || !isPlaying ? 'opacity-100' : 'opacity-0'
-          }`}
+          className="absolute inset-0 flex items-center justify-center bg-black/20 transition-opacity duration-300"
+          style={{ 
+            opacity: showControls || !isPlaying ? 1 : 0,
+            pointerEvents: showControls || !isPlaying ? 'auto' : 'none'
+          }}
           onMouseEnter={() => setShowControls(true)}
           onMouseLeave={() => setShowControls(false)}
         >
-          {!isPlaying && (
-            <button
-              onClick={togglePlay}
-              className="bg-black/50 text-white p-4 rounded-full hover:bg-black/70 transition-colors"
-            >
-              <Play className="h-12 w-12" />
-            </button>
-          )}
+          <button
+            onClick={togglePlay}
+            className="bg-white/20 backdrop-blur-sm text-white p-6 rounded-full hover:bg-white/30 transition-all transform hover:scale-110 border border-white/30"
+          >
+            {isPlaying ? (
+              <Pause className="h-8 w-8" />
+            ) : (
+              <Play className="h-8 w-8 ml-1" />
+            )}
+          </button>
         </div>
 
         {/* Video Info Overlay */}
-        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
+        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent p-4">
           <div className="flex justify-between items-end">
             <div className="flex-1 mr-3">
-              <h3 className="text-white text-lg font-bold mb-1">{video.title}</h3>
+              <h3 className="text-white text-lg font-bold mb-1 drop-shadow-lg">{video.title}</h3>
               {video.description && (
-                <p className="text-white/90 text-xs line-clamp-2">{video.description}</p>
+                <p className="text-white/90 text-sm line-clamp-2 drop-shadow">{video.description}</p>
               )}
             </div>
             
-            <div className="flex flex-col items-center space-y-3">
+            <div className="flex flex-col items-center space-y-4">
               {/* Like Button */}
-              <button
-                onClick={() => onLike(video.id)}
-                className={`p-2 rounded-full transition-colors ${
-                  isLiked 
-                    ? 'bg-red-500 text-white' 
-                    : 'bg-black/50 text-white hover:bg-red-500/20'
-                }`}
-              >
-                <Heart className={`h-5 w-5 ${isLiked ? 'fill-current' : ''}`} />
-              </button>
-              <span className="text-white text-xs font-medium">{video.likesCount}</span>
+              <div className="flex flex-col items-center">
+                <button
+                  onClick={() => onLike(video.id)}
+                  className={`p-3 rounded-full transition-all transform hover:scale-110 ${
+                    isLiked 
+                      ? 'bg-red-500 text-white shadow-lg shadow-red-500/50' 
+                      : 'bg-white/20 backdrop-blur-sm text-white hover:bg-red-500/20 border border-white/30'
+                  }`}
+                >
+                  <Heart className={`h-6 w-6 ${isLiked ? 'fill-current' : ''}`} />
+                </button>
+                <span className="text-white text-sm font-bold mt-1 drop-shadow">{video.likesCount}</span>
+              </div>
 
               {/* Sound Toggle */}
               <button
                 onClick={toggleMute}
-                className="p-2 bg-black/50 text-white rounded-full hover:bg-black/70 transition-colors"
+                className="p-3 bg-white/20 backdrop-blur-sm text-white rounded-full hover:bg-white/30 transition-all transform hover:scale-110 border border-white/30"
               >
-                {isMuted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
+                {isMuted ? <VolumeX className="h-6 w-6" /> : <Volume2 className="h-6 w-6" />}
               </button>
             </div>
           </div>
         </div>
 
-        {/* Loading Thumbnail */}
-        {video.thumbnailUrl && (
-          <div className="absolute inset-0 bg-black">
-            <img
-              src={video.thumbnailUrl}
-              alt={video.title}
-              className="w-full h-full object-cover opacity-50"
-            />
-          </div>
-        )}
+        {/* Debug Info */}
+        <div className="absolute top-2 left-2 bg-black/50 text-white text-xs p-2 rounded">
+          {video.videoUrl ? 'Video URL: ✓' : 'No Video URL'}
+        </div>
       </div>
     </div>
   )
@@ -185,15 +221,19 @@ export default function ReelsPage() {
 
   const fetchVideos = async () => {
     try {
+      console.log('Fetching videos...')
       const response = await fetch('/api/videos')
       if (response.ok) {
         const data = await response.json()
+        console.log('Videos fetched:', data)
         setVideos(data)
         
         // Check like status for all videos
         data.forEach((video: Video) => {
           checkLikeStatus(video.id)
         })
+      } else {
+        console.error('Failed to fetch videos:', response.status)
       }
     } catch (error) {
       console.error('Error fetching videos:', error)
