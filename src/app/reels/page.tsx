@@ -36,8 +36,14 @@ function VideoPlayer({ video, isActive, onLike, isLiked }: VideoPlayerProps) {
     if (!videoElement) return
 
     if (isActive) {
-      videoElement.play().catch(console.error)
-      setIsPlaying(true)
+      // Reset video to start and play
+      videoElement.currentTime = 0
+      videoElement.play().then(() => {
+        setIsPlaying(true)
+      }).catch((error) => {
+        console.error('Video play failed:', error)
+        setIsPlaying(false)
+      })
     } else {
       videoElement.pause()
       setIsPlaying(false)
@@ -74,82 +80,95 @@ function VideoPlayer({ video, isActive, onLike, isLiked }: VideoPlayerProps) {
 
   return (
     <div className="relative w-full h-screen bg-black flex items-center justify-center">
-      <video
-        ref={videoRef}
-        src={video.videoUrl}
-        className="w-full h-full object-contain"
-        muted={isMuted}
-        loop
-        playsInline
-        onEnded={handleVideoEnd}
-        onMouseEnter={() => setShowControls(true)}
-        onMouseLeave={() => setShowControls(false)}
-        onClick={togglePlay}
-      />
+      {/* Mobile-sized video container */}
+      <div className="relative w-[375px] h-[667px] max-w-[90vw] max-h-[80vh] bg-black rounded-lg overflow-hidden shadow-2xl border border-gray-600">
+        <video
+          ref={videoRef}
+          src={video.videoUrl}
+          className="w-full h-full object-cover"
+          muted={isMuted}
+          loop
+          playsInline
+          autoPlay={false}
+          controls={false}
+          preload="metadata"
+          onEnded={handleVideoEnd}
+          onMouseEnter={() => setShowControls(true)}
+          onMouseLeave={() => setShowControls(false)}
+          onClick={togglePlay}
+          onLoadedData={() => {
+            // Ensure video is ready to play
+            const videoElement = videoRef.current
+            if (videoElement && isActive) {
+              videoElement.play().catch(console.error)
+            }
+          }}
+        />
 
-      {/* Video Controls Overlay */}
-      <div 
-        className={`absolute inset-0 flex items-center justify-center transition-opacity duration-300 ${
-          showControls || !isPlaying ? 'opacity-100' : 'opacity-0'
-        }`}
-        onMouseEnter={() => setShowControls(true)}
-        onMouseLeave={() => setShowControls(false)}
-      >
-        {!isPlaying && (
-          <button
-            onClick={togglePlay}
-            className="bg-black/50 text-white p-4 rounded-full hover:bg-black/70 transition-colors"
-          >
-            <Play className="h-12 w-12" />
-          </button>
+        {/* Video Controls Overlay */}
+        <div 
+          className={`absolute inset-0 flex items-center justify-center transition-opacity duration-300 ${
+            showControls || !isPlaying ? 'opacity-100' : 'opacity-0'
+          }`}
+          onMouseEnter={() => setShowControls(true)}
+          onMouseLeave={() => setShowControls(false)}
+        >
+          {!isPlaying && (
+            <button
+              onClick={togglePlay}
+              className="bg-black/50 text-white p-4 rounded-full hover:bg-black/70 transition-colors"
+            >
+              <Play className="h-12 w-12" />
+            </button>
+          )}
+        </div>
+
+        {/* Video Info Overlay */}
+        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
+          <div className="flex justify-between items-end">
+            <div className="flex-1 mr-3">
+              <h3 className="text-white text-lg font-bold mb-1">{video.title}</h3>
+              {video.description && (
+                <p className="text-white/90 text-xs line-clamp-2">{video.description}</p>
+              )}
+            </div>
+            
+            <div className="flex flex-col items-center space-y-3">
+              {/* Like Button */}
+              <button
+                onClick={() => onLike(video.id)}
+                className={`p-2 rounded-full transition-colors ${
+                  isLiked 
+                    ? 'bg-red-500 text-white' 
+                    : 'bg-black/50 text-white hover:bg-red-500/20'
+                }`}
+              >
+                <Heart className={`h-5 w-5 ${isLiked ? 'fill-current' : ''}`} />
+              </button>
+              <span className="text-white text-xs font-medium">{video.likesCount}</span>
+
+              {/* Sound Toggle */}
+              <button
+                onClick={toggleMute}
+                className="p-2 bg-black/50 text-white rounded-full hover:bg-black/70 transition-colors"
+              >
+                {isMuted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Loading Thumbnail */}
+        {video.thumbnailUrl && (
+          <div className="absolute inset-0 bg-black">
+            <img
+              src={video.thumbnailUrl}
+              alt={video.title}
+              className="w-full h-full object-cover opacity-50"
+            />
+          </div>
         )}
       </div>
-
-      {/* Video Info Overlay */}
-      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-6">
-        <div className="flex justify-between items-end">
-          <div className="flex-1 mr-4">
-            <h3 className="text-white text-xl font-bold mb-2">{video.title}</h3>
-            {video.description && (
-              <p className="text-white/90 text-sm line-clamp-3">{video.description}</p>
-            )}
-          </div>
-          
-          <div className="flex flex-col items-center space-y-4">
-            {/* Like Button */}
-            <button
-              onClick={() => onLike(video.id)}
-              className={`p-3 rounded-full transition-colors ${
-                isLiked 
-                  ? 'bg-red-500 text-white' 
-                  : 'bg-black/50 text-white hover:bg-red-500/20'
-              }`}
-            >
-              <Heart className={`h-6 w-6 ${isLiked ? 'fill-current' : ''}`} />
-            </button>
-            <span className="text-white text-sm font-medium">{video.likesCount}</span>
-
-            {/* Sound Toggle */}
-            <button
-              onClick={toggleMute}
-              className="p-3 bg-black/50 text-white rounded-full hover:bg-black/70 transition-colors"
-            >
-              {isMuted ? <VolumeX className="h-6 w-6" /> : <Volume2 className="h-6 w-6" />}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Loading Thumbnail */}
-      {video.thumbnailUrl && (
-        <div className="absolute inset-0 bg-black">
-          <img
-            src={video.thumbnailUrl}
-            alt={video.title}
-            className="w-full h-full object-contain opacity-50"
-          />
-        </div>
-      )}
     </div>
   )
 }
@@ -287,7 +306,7 @@ export default function ReelsPage() {
   }
 
   return (
-    <div className="h-screen overflow-hidden bg-black" onWheel={handleScroll}>
+    <div className="h-screen overflow-hidden bg-gradient-to-br from-gray-900 via-black to-gray-800" onWheel={handleScroll}>
       {/* Navigation */}
       <div className="absolute top-0 left-0 right-0 z-50">
         <Navigation />
@@ -317,13 +336,18 @@ export default function ReelsPage() {
       </div>
 
       {/* Video Counter */}
-      <div className="absolute top-20 right-4 bg-black/50 text-white px-3 py-2 rounded-full text-sm z-40">
+      <div className="absolute top-4 right-4 bg-black/50 text-white px-3 py-2 rounded-full text-sm z-40">
         {currentVideoIndex + 1} / {videos.length}
       </div>
 
       {/* Navigation Hints */}
       <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-white/70 text-sm text-center z-40">
         <p>Scroll or use ↑↓ arrows to navigate</p>
+      </div>
+
+      {/* Mobile Frame Indicator */}
+      <div className="absolute top-4 left-4 bg-black/50 text-white px-3 py-2 rounded-full text-xs z-40">
+        📱 Mobile View
       </div>
     </div>
   )
