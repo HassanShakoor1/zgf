@@ -30,6 +30,8 @@ function VideoPlayer({ video, isActive, onLike, isLiked }: VideoPlayerProps) {
   const [isPlaying, setIsPlaying] = useState(false)
   const [isMuted, setIsMuted] = useState(true)
   const [showControls, setShowControls] = useState(false)
+  const [videoError, setVideoError] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     const videoElement = videoRef.current
@@ -37,6 +39,9 @@ function VideoPlayer({ video, isActive, onLike, isLiked }: VideoPlayerProps) {
 
     if (isActive) {
       console.log('Activating video:', video.videoUrl)
+      setVideoError(false)
+      setIsLoading(true)
+      
       // Load the video source
       videoElement.src = video.videoUrl
       videoElement.load()
@@ -50,10 +55,12 @@ function VideoPlayer({ video, isActive, onLike, isLiked }: VideoPlayerProps) {
         playPromise.then(() => {
           console.log('Video playing successfully')
           setIsPlaying(true)
+          setIsLoading(false)
         }).catch((error) => {
           console.error('Video play failed:', error)
           setIsPlaying(false)
-          // Show play button for user interaction
+          setIsLoading(false)
+          setVideoError(true)
         })
       }
     } else {
@@ -125,14 +132,27 @@ function VideoPlayer({ video, isActive, onLike, isLiked }: VideoPlayerProps) {
           onEnded={handleVideoEnd}
           onClick={togglePlay}
           onLoadedData={() => {
-            console.log('Video loaded:', video.videoUrl)
+            console.log('Video loaded successfully:', video.videoUrl)
+            setIsLoading(false)
+            setVideoError(false)
             const videoElement = videoRef.current
             if (videoElement && isActive) {
               videoElement.play().catch(console.error)
             }
           }}
           onError={(e) => {
-            console.error('Video error:', e)
+            console.error('Video failed to load:', video.videoUrl, e)
+            setIsPlaying(false)
+            setIsLoading(false)
+            setVideoError(true)
+          }}
+          onCanPlay={() => {
+            console.log('Video can play:', video.videoUrl)
+            setIsLoading(false)
+          }}
+          onLoadStart={() => {
+            console.log('Video loading started:', video.videoUrl)
+            setIsLoading(true)
           }}
         >
           <source src={video.videoUrl} type="video/mp4" />
@@ -140,6 +160,45 @@ function VideoPlayer({ video, isActive, onLike, isLiked }: VideoPlayerProps) {
           <source src={video.videoUrl} type="video/ogg" />
           Your browser does not support the video tag.
         </video>
+
+        {/* Loading Overlay */}
+        {isLoading && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+            <div className="text-center text-white">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
+              <p className="text-sm">Loading video...</p>
+            </div>
+          </div>
+        )}
+
+        {/* Video Error Overlay */}
+        {videoError && (
+          <div className="absolute inset-0 flex items-center justify-center bg-red-900/20">
+            <div className="text-center text-white p-4">
+              <div className="text-6xl mb-4">⚠️</div>
+              <h3 className="text-lg font-bold mb-2">Video Not Available</h3>
+              <p className="text-sm opacity-90 mb-4">
+                This video source is not working or not supported.
+              </p>
+              <div className="text-xs opacity-75 bg-black/50 p-2 rounded mb-4 break-all">
+                URL: {video.videoUrl}
+              </div>
+              <button
+                onClick={() => {
+                  setVideoError(false)
+                  setIsLoading(true)
+                  const videoElement = videoRef.current
+                  if (videoElement) {
+                    videoElement.load()
+                  }
+                }}
+                className="bg-white/20 backdrop-blur-sm text-white px-4 py-2 rounded hover:bg-white/30 transition-colors"
+              >
+                Retry
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Play Button Overlay */}
         <div 
