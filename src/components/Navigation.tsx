@@ -22,6 +22,7 @@ export default function Navigation({ className = '' }: NavigationProps) {
     { href: '/', label: 'Home' },
     { href: '/about', label: 'About Our Goats' },
     { href: '/products', label: 'Goats for Sale' },
+    { href: '/reels', label: 'Goat Reels' },
     { href: '/contact', label: 'Contact Us' },
   ]
 
