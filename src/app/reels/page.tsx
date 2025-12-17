@@ -273,6 +273,8 @@ export default function ReelsPage() {
   const [loading, setLoading] = useState(true)
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0)
   const [likedVideos, setLikedVideos] = useState<Set<number>>(new Set())
+  const [touchStart, setTouchStart] = useState(0)
+  const [touchEnd, setTouchEnd] = useState(0)
 
   useEffect(() => {
     fetchVideos()
@@ -335,10 +337,10 @@ export default function ReelsPage() {
           return newSet
         })
 
-        // Update likes count
+        // Update likes count with actual count from database
         setVideos(prev => prev.map(video => 
           video.id === videoId 
-            ? { ...video, likesCount: video.likesCount + (data.liked ? 1 : -1) }
+            ? { ...video, likesCount: data.likesCount }
             : video
         ))
       }
@@ -357,6 +359,34 @@ export default function ReelsPage() {
       // Scroll up - previous video
       setCurrentVideoIndex(prev => prev - 1)
     }
+  }
+
+  // Mobile touch handlers for swipe gestures
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStart(e.targetTouches[0].clientY)
+  }
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientY)
+  }
+
+  const handleTouchEnd = () => {
+    if (!touchStart || !touchEnd) return
+    
+    const distance = touchStart - touchEnd
+    const minSwipeDistance = 50 // Minimum distance for swipe
+    
+    if (distance > minSwipeDistance && currentVideoIndex < videos.length - 1) {
+      // Swiped up - next video
+      setCurrentVideoIndex(prev => prev + 1)
+    } else if (distance < -minSwipeDistance && currentVideoIndex > 0) {
+      // Swiped down - previous video
+      setCurrentVideoIndex(prev => prev - 1)
+    }
+    
+    // Reset
+    setTouchStart(0)
+    setTouchEnd(0)
   }
 
   const handleKeyDown = (e: KeyboardEvent) => {
@@ -405,7 +435,13 @@ export default function ReelsPage() {
   }
 
   return (
-    <div className="h-screen overflow-hidden bg-gradient-to-br from-gray-900 via-black to-gray-800" onWheel={handleScroll}>
+    <div 
+      className="h-screen overflow-hidden bg-gradient-to-br from-gray-900 via-black to-gray-800" 
+      onWheel={handleScroll}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
       {/* Navigation */}
       <div className="absolute top-0 left-0 right-0 z-50">
         <Navigation />

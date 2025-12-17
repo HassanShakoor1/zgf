@@ -37,8 +37,8 @@ export async function POST(
         where: { id: existingLike.id }
       })
 
-      // Update likes count
-      await prisma.video.update({
+      // Update likes count and get updated video
+      const updatedVideo = await prisma.video.update({
         where: { id: videoId },
         data: {
           likesCount: {
@@ -49,7 +49,8 @@ export async function POST(
 
       return NextResponse.json({ 
         message: 'Video unliked',
-        liked: false 
+        liked: false,
+        likesCount: updatedVideo.likesCount
       })
     } else {
       // Like - add new like
@@ -60,8 +61,8 @@ export async function POST(
         }
       })
 
-      // Update likes count
-      await prisma.video.update({
+      // Update likes count and get updated video
+      const updatedVideo = await prisma.video.update({
         where: { id: videoId },
         data: {
           likesCount: {
@@ -72,7 +73,8 @@ export async function POST(
 
       return NextResponse.json({ 
         message: 'Video liked',
-        liked: true 
+        liked: true,
+        likesCount: updatedVideo.likesCount
       })
     }
   } catch (error) {

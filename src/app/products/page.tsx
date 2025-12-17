@@ -188,16 +188,16 @@ export default function GoatsForSale() {
                     
                     return firstImage && (firstImage.startsWith('http') || firstImage.startsWith('/') || firstImage.startsWith('data:image/')) ? (
                       <>
-                        <Image
+                    <Image
                           src={firstImage}
-                          alt={goat.name}
-                          fill
-                          className="object-cover group-hover:scale-105 transition-transform duration-300"
-                          onError={(e) => {
-                            // Fallback to placeholder if image fails to load
-                            e.currentTarget.style.display = 'none'
-                          }}
-                        />
+                      alt={goat.name}
+                      fill
+                      className="object-cover group-hover:scale-105 transition-transform duration-300"
+                      onError={(e) => {
+                        // Fallback to placeholder if image fails to load
+                        e.currentTarget.style.display = 'none'
+                      }}
+                    />
                         {images.length > 1 && (
                           <button
                             onClick={() => openImageGallery(goat)}
@@ -207,13 +207,13 @@ export default function GoatsForSale() {
                           </button>
                         )}
                       </>
-                    ) : (
-                      <div className="h-full bg-gradient-to-br from-yellow-200 via-cyan-200 to-yellow-300 flex items-center justify-center">
-                        <div className="text-center">
-                          <span className="text-6xl mb-2 block">🐐</span>
-                          <span className="text-sm text-cyan-800 font-semibold">{goat.breed}</span>
-                        </div>
+                  ) : (
+                    <div className="h-full bg-gradient-to-br from-yellow-200 via-cyan-200 to-yellow-300 flex items-center justify-center">
+                      <div className="text-center">
+                        <span className="text-6xl mb-2 block">🐐</span>
+                        <span className="text-sm text-cyan-800 font-semibold">{goat.breed}</span>
                       </div>
+                    </div>
                     )
                   })()}
                   {!goat.isAvailable && (
