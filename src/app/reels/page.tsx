@@ -296,12 +296,8 @@ export default function ReelsPage() {
   const [likedVideos, setLikedVideos] = useState<Set<number>>(new Set())
   const [touchStart, setTouchStart] = useState(0)
   const [touchEnd, setTouchEnd] = useState(0)
-  const [deviceId, setDeviceId] = useState<string>('temp-device-id')
-  
-  // Initialize device ID on client side only
-  useEffect(() => {
-    setDeviceId(getDeviceId())
-  }, [])
+  // Lazy initialization - only runs once on client side
+  const [deviceId] = useState<string>(() => getDeviceId())
 
   useEffect(() => {
     fetchVideos()
@@ -366,6 +362,8 @@ export default function ReelsPage() {
 
   const handleLike = async (videoId: number) => {
     try {
+      console.log('Liking video with deviceId:', deviceId) // Debug log
+      
       const response = await fetch(`/api/videos/${videoId}/like`, {
         method: 'POST',
         headers: {
@@ -376,6 +374,7 @@ export default function ReelsPage() {
 
       if (response.ok) {
         const data = await response.json()
+        console.log('Like response:', data) // Debug log
         
         // Update like status
         setLikedVideos(prev => {
@@ -394,9 +393,14 @@ export default function ReelsPage() {
             ? { ...video, likesCount: data.likesCount }
             : video
         ))
+      } else {
+        const errorData = await response.json()
+        console.error('Like failed:', errorData)
+        alert(`Failed to like video: ${errorData.error || 'Unknown error'}`)
       }
     } catch (error) {
       console.error('Error liking video:', error)
+      alert('Failed to like video. Please try again.')
     }
   }
 
