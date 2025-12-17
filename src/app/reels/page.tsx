@@ -274,6 +274,16 @@ function VideoPlayer({ video, isActive, onLike, isLiked }: VideoPlayerProps) {
   )
 }
 
+// Generate unique device ID for this browser
+function getDeviceId() {
+  let deviceId = localStorage.getItem('deviceId')
+  if (!deviceId) {
+    deviceId = `device_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`
+    localStorage.setItem('deviceId', deviceId)
+  }
+  return deviceId
+}
+
 export default function ReelsPage() {
   const [videos, setVideos] = useState<Video[]>([])
   const [loading, setLoading] = useState(true)
@@ -281,6 +291,7 @@ export default function ReelsPage() {
   const [likedVideos, setLikedVideos] = useState<Set<number>>(new Set())
   const [touchStart, setTouchStart] = useState(0)
   const [touchEnd, setTouchEnd] = useState(0)
+  const [deviceId] = useState(() => getDeviceId())
 
   useEffect(() => {
     fetchVideos()
@@ -331,7 +342,7 @@ export default function ReelsPage() {
 
   const checkLikeStatus = async (videoId: number) => {
     try {
-      const response = await fetch(`/api/videos/${videoId}/like`)
+      const response = await fetch(`/api/videos/${videoId}/like?deviceId=${encodeURIComponent(deviceId)}`)
       if (response.ok) {
         const data = await response.json()
         if (data.liked) {
@@ -347,6 +358,10 @@ export default function ReelsPage() {
     try {
       const response = await fetch(`/api/videos/${videoId}/like`, {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ deviceId }),
       })
 
       if (response.ok) {

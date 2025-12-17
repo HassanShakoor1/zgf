@@ -17,16 +17,23 @@ export async function POST(
       )
     }
 
-    // Get user's IP address
-    const forwarded = request.headers.get('x-forwarded-for')
-    const ipAddress = forwarded ? forwarded.split(',')[0] : request.headers.get('x-real-ip') || 'unknown'
+    // Get device ID from request body
+    const body = await request.json()
+    const deviceId = body.deviceId
+
+    if (!deviceId) {
+      return NextResponse.json(
+        { error: 'Device ID is required' },
+        { status: 400 }
+      )
+    }
 
     // Check if user already liked this video
     const existingLike = await prisma.videoLike.findUnique({
       where: {
-        videoId_ipAddress: {
+        videoId_deviceId: {
           videoId,
-          ipAddress
+          deviceId
         }
       }
     })
@@ -57,7 +64,7 @@ export async function POST(
       await prisma.videoLike.create({
         data: {
           videoId,
-          ipAddress
+          deviceId
         }
       })
 
@@ -102,16 +109,23 @@ export async function GET(
       )
     }
 
-    // Get user's IP address
-    const forwarded = request.headers.get('x-forwarded-for')
-    const ipAddress = forwarded ? forwarded.split(',')[0] : request.headers.get('x-real-ip') || 'unknown'
+    // Get device ID from query parameters
+    const { searchParams } = new URL(request.url)
+    const deviceId = searchParams.get('deviceId')
+
+    if (!deviceId) {
+      return NextResponse.json(
+        { error: 'Device ID is required' },
+        { status: 400 }
+      )
+    }
 
     // Check if user liked this video
     const existingLike = await prisma.videoLike.findUnique({
       where: {
-        videoId_ipAddress: {
+        videoId_deviceId: {
           videoId,
-          ipAddress
+          deviceId
         }
       }
     })
