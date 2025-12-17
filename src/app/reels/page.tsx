@@ -274,8 +274,13 @@ function VideoPlayer({ video, isActive, onLike, isLiked }: VideoPlayerProps) {
   )
 }
 
-// Generate unique device ID for this browser
+// Generate unique device ID for this browser (client-side only)
 function getDeviceId() {
+  // Only run on client side
+  if (typeof window === 'undefined') {
+    return 'server-side-temp-id'
+  }
+  
   let deviceId = localStorage.getItem('deviceId')
   if (!deviceId) {
     deviceId = `device_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`
@@ -291,7 +296,12 @@ export default function ReelsPage() {
   const [likedVideos, setLikedVideos] = useState<Set<number>>(new Set())
   const [touchStart, setTouchStart] = useState(0)
   const [touchEnd, setTouchEnd] = useState(0)
-  const [deviceId] = useState(() => getDeviceId())
+  const [deviceId, setDeviceId] = useState<string>('temp-device-id')
+  
+  // Initialize device ID on client side only
+  useEffect(() => {
+    setDeviceId(getDeviceId())
+  }, [])
 
   useEffect(() => {
     fetchVideos()
