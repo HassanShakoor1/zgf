@@ -25,10 +25,13 @@ interface VideoPlayerProps {
   isLiked: boolean
 }
 
+// Global mute state to persist across videos
+let globalMuteState = true
+
 function VideoPlayer({ video, isActive, onLike, isLiked }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const [isPlaying, setIsPlaying] = useState(false)
-  const [isMuted, setIsMuted] = useState(true)
+  const [isMuted, setIsMuted] = useState(globalMuteState) // Use global state
   const [showControls, setShowControls] = useState(false)
   const [videoError, setVideoError] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
@@ -44,6 +47,7 @@ function VideoPlayer({ video, isActive, onLike, isLiked }: VideoPlayerProps) {
       
       // Load the video source
       videoElement.src = video.videoUrl
+      videoElement.muted = globalMuteState // Apply global mute state
       videoElement.load()
       
       // Reset and play
@@ -102,8 +106,10 @@ function VideoPlayer({ video, isActive, onLike, isLiked }: VideoPlayerProps) {
     const videoElement = videoRef.current
     if (!videoElement) return
 
-    videoElement.muted = !isMuted
-    setIsMuted(!isMuted)
+    const newMuteState = !isMuted
+    videoElement.muted = newMuteState
+    setIsMuted(newMuteState)
+    globalMuteState = newMuteState // Save globally so it persists
   }
 
   const handleVideoEnd = () => {
@@ -278,28 +284,48 @@ export default function ReelsPage() {
 
   useEffect(() => {
     fetchVideos()
+    
+    // Poll for like count updates every 3 seconds
+    const pollInterval = setInterval(() => {
+      fetchVideos(true) // Silent update - just refresh like counts
+    }, 3000) // Update every 3 seconds
+    
+    return () => clearInterval(pollInterval)
   }, [])
 
-  const fetchVideos = async () => {
+  const fetchVideos = async (silent = false) => {
     try {
-      console.log('Fetching videos...')
+      if (!silent) console.log('Fetching videos...')
       const response = await fetch('/api/videos')
       if (response.ok) {
         const data = await response.json()
-        console.log('Videos fetched:', data)
-        setVideos(data)
+        if (!silent) console.log('Videos fetched:', data)
         
-        // Check like status for all videos
-        data.forEach((video: Video) => {
-          checkLikeStatus(video.id)
+        // Update videos without disrupting current playback
+        setVideos(prevVideos => {
+          // If this is initial load, return new data
+          if (prevVideos.length === 0) return data
+          
+          // Otherwise, just update like counts
+          return prevVideos.map(prevVideo => {
+            const updatedVideo = data.find((v: Video) => v.id === prevVideo.id)
+            return updatedVideo ? { ...prevVideo, likesCount: updatedVideo.likesCount } : prevVideo
+          })
         })
+        
+        // Check like status for all videos (only on initial load)
+        if (!silent) {
+          data.forEach((video: Video) => {
+            checkLikeStatus(video.id)
+          })
+        }
       } else {
         console.error('Failed to fetch videos:', response.status)
       }
     } catch (error) {
       console.error('Error fetching videos:', error)
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }
 
