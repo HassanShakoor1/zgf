@@ -7,11 +7,6 @@ export async function GET() {
     const videos = await prisma.video.findMany({
       where: { isActive: true },
       orderBy: { createdAt: 'desc' },
-      include: {
-        _count: {
-          select: { likes: true }
-        }
-      }
     })
 
     return NextResponse.json(videos)
