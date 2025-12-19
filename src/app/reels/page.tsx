@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Heart, Play, Pause, Volume2, VolumeX } from 'lucide-react'
+import { Play, Pause, Volume2, VolumeX } from 'lucide-react'
 import Navigation from '@/components/Navigation'
 
 interface Video {
@@ -21,14 +21,12 @@ interface Video {
 interface VideoPlayerProps {
   video: Video
   isActive: boolean
-  onLike: (videoId: number) => void
-  isLiked: boolean
 }
 
 // Global mute state to persist across videos
 let globalMuteState = true
 
-function VideoPlayer({ video, isActive, onLike, isLiked }: VideoPlayerProps) {
+function VideoPlayer({ video, isActive }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const [isPlaying, setIsPlaying] = useState(false)
   const [isMuted, setIsMuted] = useState(globalMuteState) // Use global state
@@ -239,21 +237,6 @@ function VideoPlayer({ video, isActive, onLike, isLiked }: VideoPlayerProps) {
             </div>
             
             <div className="flex flex-col items-center space-y-4">
-              {/* Like Button */}
-              <div className="flex flex-col items-center">
-                <button
-                  onClick={() => onLike(video.id)}
-                  className={`p-3 rounded-full transition-all transform hover:scale-110 ${
-                    isLiked 
-                      ? 'bg-red-500 text-white shadow-lg shadow-red-500/50' 
-                      : 'bg-white/20 backdrop-blur-sm text-white hover:bg-red-500/20 border border-white/30'
-                  }`}
-                >
-                  <Heart className={`h-6 w-6 ${isLiked ? 'fill-current' : ''}`} />
-                </button>
-                <span className="text-white text-sm font-bold mt-1 drop-shadow">{video.likesCount}</span>
-              </div>
-
               {/* Sound Toggle */}
               <button
                 onClick={toggleMute}
@@ -275,132 +258,32 @@ function VideoPlayer({ video, isActive, onLike, isLiked }: VideoPlayerProps) {
 }
 
 // Generate unique device ID for this browser (client-side only)
-function getDeviceId() {
-  // Only run on client side
-  if (typeof window === 'undefined') {
-    return 'server-side-temp-id'
-  }
-  
-  let deviceId = localStorage.getItem('deviceId')
-  if (!deviceId) {
-    deviceId = `device_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`
-    localStorage.setItem('deviceId', deviceId)
-  }
-  return deviceId
-}
-
 export default function ReelsPage() {
   const [videos, setVideos] = useState<Video[]>([])
   const [loading, setLoading] = useState(true)
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0)
-  const [likedVideos, setLikedVideos] = useState<Set<number>>(new Set())
   const [touchStart, setTouchStart] = useState(0)
   const [touchEnd, setTouchEnd] = useState(0)
-  // Lazy initialization - only runs once on client side
-  const [deviceId] = useState<string>(() => getDeviceId())
 
   useEffect(() => {
     fetchVideos()
-    
-    // Poll for like count updates every 3 seconds
-    const pollInterval = setInterval(() => {
-      fetchVideos(true) // Silent update - just refresh like counts
-    }, 3000) // Update every 3 seconds
-    
-    return () => clearInterval(pollInterval)
   }, [])
 
-  const fetchVideos = async (silent = false) => {
+  const fetchVideos = async () => {
     try {
-      if (!silent) console.log('Fetching videos...')
+      console.log('Fetching videos...')
       const response = await fetch('/api/videos')
       if (response.ok) {
         const data = await response.json()
-        if (!silent) console.log('Videos fetched:', data)
-        
-        // Update videos without disrupting current playback
-        setVideos(prevVideos => {
-          // If this is initial load, return new data
-          if (prevVideos.length === 0) return data
-          
-          // Otherwise, just update like counts
-          return prevVideos.map(prevVideo => {
-            const updatedVideo = data.find((v: Video) => v.id === prevVideo.id)
-            return updatedVideo ? { ...prevVideo, likesCount: updatedVideo.likesCount } : prevVideo
-          })
-        })
-        
-        // Check like status for all videos (only on initial load)
-        if (!silent) {
-          data.forEach((video: Video) => {
-            checkLikeStatus(video.id)
-          })
-        }
+        console.log('Videos fetched:', data)
+        setVideos(data)
       } else {
         console.error('Failed to fetch videos:', response.status)
       }
     } catch (error) {
       console.error('Error fetching videos:', error)
     } finally {
-      if (!silent) setLoading(false)
-    }
-  }
-
-  const checkLikeStatus = async (videoId: number) => {
-    try {
-      const response = await fetch(`/api/videos/${videoId}/like?deviceId=${encodeURIComponent(deviceId)}`)
-      if (response.ok) {
-        const data = await response.json()
-        if (data.liked) {
-          setLikedVideos(prev => new Set(prev).add(videoId))
-        }
-      }
-    } catch (error) {
-      console.error('Error checking like status:', error)
-    }
-  }
-
-  const handleLike = async (videoId: number) => {
-    try {
-      console.log('Liking video with deviceId:', deviceId) // Debug log
-      
-      const response = await fetch(`/api/videos/${videoId}/like`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ deviceId }),
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        console.log('Like response:', data) // Debug log
-        
-        // Update like status
-        setLikedVideos(prev => {
-          const newSet = new Set(prev)
-          if (data.liked) {
-            newSet.add(videoId)
-          } else {
-            newSet.delete(videoId)
-          }
-          return newSet
-        })
-
-        // Update likes count with actual count from database
-        setVideos(prev => prev.map(video => 
-          video.id === videoId 
-            ? { ...video, likesCount: data.likesCount }
-            : video
-        ))
-      } else {
-        const errorData = await response.json()
-        console.error('Like failed:', errorData)
-        alert(`Failed to like video: ${errorData.error || 'Unknown error'}`)
-      }
-    } catch (error) {
-      console.error('Error liking video:', error)
-      alert('Failed to like video. Please try again.')
+      setLoading(false)
     }
   }
 
@@ -518,8 +401,6 @@ export default function ReelsPage() {
             <VideoPlayer
               video={video}
               isActive={index === currentVideoIndex}
-              onLike={handleLike}
-              isLiked={likedVideos.has(video.id)}
             />
           </div>
         ))}
